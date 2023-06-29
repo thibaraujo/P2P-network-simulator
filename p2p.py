@@ -1,7 +1,9 @@
 import tkinter as tk
 from tkinter import ttk
-import time
+from tkinter import font
 
+global message
+message = "Olá"
 
 class File:
     def __init__(self, name, size):
@@ -18,21 +20,26 @@ class Node:
         self.files.append(file)
 
     def send_message(self, dest_node, file):
-        print(f"Enviando pedaço do arquivo '{file.name}' do nó {self.host} para o nó {dest_node.host}.")
-        dest_node.receive_file(file)
+        global message
+        if(self.host != dest_node.host):
+            message.set(f"Compartilhando '{file.name}' com {dest_node.host}.") 
+            print(f"Enviando pedaço do arquivo '{file.name}' do nó {self.host} para o nó {dest_node.host}.")
+            dest_node.receive_file(file)
+            
 
     def receive_file(self, file):
         self.files.append(file)
 
 
 class P2PNetworkGUI:
+    global message
     def __init__(self, window):
         self.window = window
         self.nodes = []
         self.node_coords = {}
         self.node_radius = 20
         self.canvas_width = 600
-        self.canvas_height = 400
+        self.canvas_height = 300
 
         # Criar o Nó 1 com o arquivo inicial
         node1 = Node("Nó 1")
@@ -60,7 +67,7 @@ class P2PNetworkGUI:
         self.create_gui()
 
     def create_gui(self):
-        self.window.title("Sistema P2P")
+        self.window.title("Rede P2P")
         self.window.geometry("800x600")
 
         # Frame para seleção de nós
@@ -68,7 +75,7 @@ class P2PNetworkGUI:
         node_frame.pack(pady=10)
 
         # Seleção de nó de destino
-        dest_label = tk.Label(node_frame, text="Nó de Destino:")
+        dest_label = tk.Label(node_frame, text="Solicita:")
         dest_label.grid(row=0, column=0, padx=5)
 
         self.dest_combobox = ttk.Combobox(node_frame, values=[node.host for node in self.nodes])
@@ -80,14 +87,14 @@ class P2PNetworkGUI:
         file_frame.pack(pady=10)
 
         file_label = tk.Label(file_frame, text="Arquivo:")
-        file_label.grid(row=0, column=0, padx=5)
+        file_label.grid(row=0, column=0, padx=4)
 
         self.file_combobox = ttk.Combobox(file_frame, values=[file.name for file in self.nodes[0].files])
         self.file_combobox.grid(row=0, column=1, padx=5)
 
         # Botão de envio de pedaço de arquivo
-        send_button = tk.Button(self.window, text="Enviar Pedaço", command=self.send_piece)
-        send_button.pack()
+        send_button = tk.Button(self.window, text="Solicitar Arquivo na Rede", command=self.send_piece)
+        send_button.pack(anchor="center", pady=20)
 
         # Frame para visualização dos nós
         canvas_frame = tk.Frame(self.window, width=self.canvas_width, height=self.canvas_height)
@@ -102,6 +109,13 @@ class P2PNetworkGUI:
         self.node_coords[self.nodes[2]] = (300, 150)
         self.node_coords[self.nodes[3]] = (400, 100)
         self.node_coords[self.nodes[4]] = (500, 200)
+
+        # Mensagem de nós enviando pedaços do arquivo
+        global message
+        message = tk.StringVar()
+        fonte = font.Font(family="Arial", size=15)
+        label_msg = tk.Label(self.window, textvariable=message, font=fonte)
+        label_msg.pack(pady=10)
 
         # Executar a janela principal
         self.update_node_display()
