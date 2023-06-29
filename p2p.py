@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 from tkinter import font
+import time
 
 global message
 message = "Olá"
@@ -118,7 +119,8 @@ class P2PNetworkGUI:
         label_msg.pack(pady=10)
 
         # Executar a janela principal
-        self.update_node_display()
+        self.update_node_display_green()
+        # self.update_node_display_blue()
         self.window.mainloop()
 
     def handle_dest_selection(self, event):
@@ -160,13 +162,10 @@ class P2PNetworkGUI:
             if file in node.files:
                 node.send_message(dest_node, file)
 
-        # Atualizar a cor dos nós
-        self.update_node_display()
-
         # Desenhar as setas
         self.draw_arrows(dest_node)
 
-    def update_node_display(self):
+    def update_node_display_green(self):
         self.canvas.delete("all")
 
         for node, coords in self.node_coords.items():
@@ -177,6 +176,17 @@ class P2PNetworkGUI:
 
         self.window.update()
 
+    # def update_node_display_blue(self):
+    #     self.canvas.delete("all")
+
+    #     for node, coords in self.node_coords.items():
+    #         x, y = coords
+    #         color = "blue" 
+    #         self.canvas.create_oval(x, y, x + self.node_radius * 2, y + self.node_radius * 2, fill=color)
+    #         self.canvas.create_text(x + self.node_radius, y + self.node_radius, text=node.host, tags="node_text")
+
+    #     self.window.update()
+
     def draw_arrows(self, dest_node):
         dest_coords = self.node_coords[dest_node]
 
@@ -184,15 +194,23 @@ class P2PNetworkGUI:
             if node != dest_node and any(file in node.files for file in dest_node.files):
                 origin_coords = coords
                 self.draw_arrow(origin_coords, dest_coords)
+        
+        self.update_node_display_green()
 
     def draw_arrow(self, origin_coords, dest_coords):
         x1, y1 = origin_coords[0] + self.node_radius, origin_coords[1] + self.node_radius
         x2, y2 = dest_coords[0] + self.node_radius, dest_coords[1] + self.node_radius
         arrow = self.canvas.create_line(x1, y1, x2, y2, arrow="last", tags="arrow")
 
-        self.canvas.after(1000, lambda: self.remove_arrow(arrow))
+        step = 0
+        while step <= 1:
+            x = x1 + (x2 - x1) * step
+            y = y1 + (y2 - y1) * step
+            self.canvas.coords(arrow, x1, y1, x, y)
+            self.window.update()
+            time.sleep(0.04) 
+            step += 0.05
 
-    def remove_arrow(self, arrow):
         self.canvas.delete(arrow)
 
 
