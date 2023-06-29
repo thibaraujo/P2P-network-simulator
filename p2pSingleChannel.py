@@ -1,10 +1,10 @@
 import tkinter as tk
 from tkinter import ttk
-from tkinter import font
 import time
 
-global message
-message = "Olá"
+
+is_animation_finished = False
+
 
 class File:
     def __init__(self, name, size):
@@ -21,26 +21,20 @@ class Node:
         self.files.append(file)
 
     def send_message(self, dest_node, file):
-        global message
-        if(self.host != dest_node.host):
-            message.set(f"Compartilhando '{file.name}' com {dest_node.host}.") 
-            print(f"Enviando pedaço do arquivo '{file.name}' do nó {self.host} para o nó {dest_node.host}.")
-            dest_node.receive_file(file)
-            
+        print(f"Enviando pedaço do arquivo '{file.name}' do nó {self.host} para o nó {dest_node.host}.")
 
     def receive_file(self, file):
         self.files.append(file)
 
 
 class P2PNetworkGUI:
-    global message
     def __init__(self, window):
         self.window = window
         self.nodes = []
         self.node_coords = {}
         self.node_radius = 20
         self.canvas_width = 600
-        self.canvas_height = 300
+        self.canvas_height = 400
 
         # Criar o Nó 1 com o arquivo inicial
         node1 = Node("Nó 1")
@@ -68,19 +62,27 @@ class P2PNetworkGUI:
         self.create_gui()
 
     def create_gui(self):
-        self.window.title("Rede P2P")
+        self.window.title("Sistema P2P")
         self.window.geometry("800x600")
 
         # Frame para seleção de nós
         node_frame = tk.Frame(self.window)
         node_frame.pack(pady=10)
 
+        # Seleção de nó de origem
+        origin_label = tk.Label(node_frame, text="Nó de Origem:")
+        origin_label.grid(row=0, column=0, padx=5)
+
+        self.origin_combobox = ttk.Combobox(node_frame, values=[node.host for node in self.nodes])
+        self.origin_combobox.grid(row=0, column=1, padx=5)
+        self.origin_combobox.bind("<<ComboboxSelected>>", self.handle_origin_selection)
+
         # Seleção de nó de destino
-        dest_label = tk.Label(node_frame, text="Solicita:")
-        dest_label.grid(row=0, column=0, padx=5)
+        dest_label = tk.Label(node_frame, text="Nó de Destino:")
+        dest_label.grid(row=1, column=0, padx=5)
 
         self.dest_combobox = ttk.Combobox(node_frame, values=[node.host for node in self.nodes])
-        self.dest_combobox.grid(row=0, column=1, padx=5)
+        self.dest_combobox.grid(row=1, column=1, padx=5)
         self.dest_combobox.bind("<<ComboboxSelected>>", self.handle_dest_selection)
 
         # Frame para seleção de arquivo
@@ -88,14 +90,14 @@ class P2PNetworkGUI:
         file_frame.pack(pady=10)
 
         file_label = tk.Label(file_frame, text="Arquivo:")
-        file_label.grid(row=0, column=0, padx=4)
+        file_label.grid(row=0, column=0, padx=5)
 
         self.file_combobox = ttk.Combobox(file_frame, values=[file.name for file in self.nodes[0].files])
         self.file_combobox.grid(row=0, column=1, padx=5)
 
         # Botão de envio de pedaço de arquivo
-        send_button = tk.Button(self.window, text="Solicitar Arquivo na Rede", command=self.send_piece)
-        send_button.pack(anchor="center", pady=20)
+        send_button = tk.Button(self.window, text="Enviar Pedaço", command=self.send_piece)
+        send_button.pack()
 
         # Frame para visualização dos nós
         canvas_frame = tk.Frame(self.window, width=self.canvas_width, height=self.canvas_height)
@@ -111,27 +113,30 @@ class P2PNetworkGUI:
         self.node_coords[self.nodes[3]] = (400, 100)
         self.node_coords[self.nodes[4]] = (500, 200)
 
-        # Mensagem de nós enviando pedaços do arquivo
-        global message
-        message = tk.StringVar()
-        fonte = font.Font(family="Arial", size=15)
-        label_msg = tk.Label(self.window, textvariable=message, font=fonte)
-        label_msg.pack(pady=10)
-
         # Executar a janela principal
-        self.update_node_display_green()
-        # self.update_node_display_blue()
+        self.update_node_display()
         self.window.mainloop()
+
+    def handle_origin_selection(self, event):
+        self.selected_origin_node = self.origin_combobox.get()
 
     def handle_dest_selection(self, event):
         self.selected_dest_node = self.dest_combobox.get()
 
     def send_piece(self):
+        origin_host = self.selected_origin_node
         dest_host = self.selected_dest_node
         file_name = self.file_combobox.get()
 
+        origin_node = None
         dest_node = None
         file = None
+
+        # Encontrar o nó de origem
+        for node in self.nodes:
+            if node.host == origin_host:
+                origin_node = node
+                break
 
         # Encontrar o nó de destino
         for node in self.nodes:
@@ -140,13 +145,13 @@ class P2PNetworkGUI:
                 break
 
         # Encontrar o arquivo
-        for file_obj in self.nodes[0].files:
+        for file_obj in origin_node.files:
             if file_obj.name == file_name:
                 file = file_obj
                 break
 
-        # Verificar se o nó de destino e o arquivo foram encontrados
-        if dest_node is None or file is None:
+        # Verificar se todos os elementos foram encontrados
+        if origin_node is None or dest_node is None or file is None:
             return
 
         # Verificar se o nó de destino já possui o arquivo
@@ -157,15 +162,13 @@ class P2PNetworkGUI:
             # O nó de destino já possui o arquivo
             print(f"O nó {dest_node.host} já possui o arquivo '{file.name}'.")
 
-        # Realizar a transferência do pedaço do arquivo por todos os nós que possuem o arquivo
-        for node in self.nodes:
-            if file in node.files:
-                node.send_message(dest_node, file)
+        # Realizar a transferência do pedaço do arquivo
+        origin_node.send_message(dest_node, file)
 
-        # Desenhar as setas
-        self.draw_arrows(dest_node)
+        # Desenhar a seta
+        self.draw_arrow(self.node_coords[origin_node], self.node_coords[dest_node])
 
-    def update_node_display_green(self):
+    def update_node_display(self):
         self.canvas.delete("all")
 
         for node, coords in self.node_coords.items():
@@ -174,46 +177,28 @@ class P2PNetworkGUI:
             self.canvas.create_oval(x, y, x + self.node_radius * 2, y + self.node_radius * 2, fill=color)
             self.canvas.create_text(x + self.node_radius, y + self.node_radius, text=node.host, tags="node_text")
 
+        time.sleep(0.05)
         self.window.update()
-
-    # def update_node_display_blue(self):
-    #     self.canvas.delete("all")
-
-    #     for node, coords in self.node_coords.items():
-    #         x, y = coords
-    #         color = "blue" 
-    #         self.canvas.create_oval(x, y, x + self.node_radius * 2, y + self.node_radius * 2, fill=color)
-    #         self.canvas.create_text(x + self.node_radius, y + self.node_radius, text=node.host, tags="node_text")
-
-    #     self.window.update()
-
-    def draw_arrows(self, dest_node):
-        dest_coords = self.node_coords[dest_node]
-
-        for node, coords in self.node_coords.items():
-            if node != dest_node and any(file in node.files for file in dest_node.files):
-                origin_coords = coords
-                self.draw_arrow(origin_coords, dest_coords)
-        
-        self.update_node_display_green()
 
     def draw_arrow(self, origin_coords, dest_coords):
         x1, y1 = origin_coords[0] + self.node_radius, origin_coords[1] + self.node_radius
         x2, y2 = dest_coords[0] + self.node_radius, dest_coords[1] + self.node_radius
-        arrow = self.canvas.create_line(x1, y1, x2, y2, arrow="last", tags="arrow")
+        arrow = self.canvas.create_line(x1, y1, x2, y2, arrow=tk.LAST, tags="arrow")
 
+        # Animação da seta
         step = 0
         while step <= 1:
             x = x1 + (x2 - x1) * step
             y = y1 + (y2 - y1) * step
             self.canvas.coords(arrow, x1, y1, x, y)
             self.window.update()
-            time.sleep(0.04) 
+            time.sleep(0.05)  # Aumentar o tempo de espera para tornar a animação mais lenta
             step += 0.05
 
         self.canvas.delete(arrow)
+        self.update_node_display()
 
 
-if __name__ == "__main__":
-    window = tk.Tk()
-    p2p_network = P2PNetworkGUI(window)
+# Criar a janela principal
+window = tk.Tk()
+P2PNetworkGUI(window)
